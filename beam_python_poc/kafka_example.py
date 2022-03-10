@@ -19,18 +19,18 @@ def run_pipeline():
 
     with beam.Pipeline(options=options) as p:
         (p
-         | 'Create words' >> beam.Create(['to be or not to be'])
-         # | 'Read from Kafka' >> ReadFromKafka(consumer_config={'bootstrap.servers': KAFKA_BOOTSTRAP,
-         #                                                       'auto.offset.reset': 'latest'},
-         #                                      topics=['test.source.topic'])
+         # | 'Create words' >> beam.Create(['to be or not to be'])
+         | 'Read from Kafka' >> ReadFromKafka(consumer_config={'bootstrap.servers': KAFKA_BOOTSTRAP,
+                                                               'auto.offset.reset': 'latest'},
+                                              topics=['test.source.topic'])
          | 'Par with 1' >> beam.Map(lambda word: (word, 1))
          | 'Window of 10 seconds' >> beam.WindowInto(window.FixedWindows(10))
          | 'Group by key' >> beam.GroupByKey()
          | 'Sum word counts' >> beam.Map(lambda kv: (kv[0], sum(kv[1])))
-         | 'Print to console' >> beam.Map(lambda wordcount: print(wordcount))
-         # | 'Write to Kafka' >> WriteToKafka(producer_config={'bootstrap.servers': KAFKA_BOOTSTRAP},
-         #                                    topic='test.output.topic',
-         #                                    )
+         # | 'Print to console' >> beam.Map(lambda wordcount: print(wordcount))
+         | 'Write to Kafka' >> WriteToKafka(producer_config={'bootstrap.servers': KAFKA_BOOTSTRAP},
+                                            topic='test.output.topic',
+                                            )
         )
 
 if __name__ == '__main__':
