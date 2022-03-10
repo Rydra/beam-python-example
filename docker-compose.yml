@@ -1,0 +1,116 @@
+version: "3.9"
+
+services:
+  kafka:
+    image: confluentinc/cp-kafka:6.2.0
+    depends_on:
+      - zookeeper
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENERS: INTERNAL://0.0.0.0:9092,PLAINTEXT://0.0.0.0:9093
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:9092,PLAINTEXT://localhost:9093
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+      KAFKA_LOG4J_ROOT_LOGLEVEL: INFO
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_MESSAGE_MAX_BYTES: 10485760
+      KAFKA_SOCKET_REQUEST_MAX_BYTES: 100001200
+    restart: always
+
+  zookeeper:
+    image: zookeeper:3.7.0
+    restart: always
+
+  kafka-actualizer:
+    image: confluentinc/cp-kafka:6.2.0
+    depends_on:
+      - kafka
+    volumes:
+      - ./docker/wait-for-it.sh:/wait-for-it.sh
+    command: |
+      bash -c '/wait-for-it.sh --timeout=0 -s kafka:9092 && \
+      kafka-topics --create --if-not-exists --topic test.source.topic --partitions 8 --replication-factor 1 --zookeeper zookeeper:2181 && \
+      kafka-topics --create --if-not-exists --topic test.output.topic --partitions 8 --replication-factor 1 --zookeeper zookeeper:2181 && \
+      exit 0'
+    environment:
+      KAFKA_BROKER_ID: ignored
+      KAFKA_ZOOKEEPER_CONNECT: ignored
+
+#  # Session cluster for flink: https://nightlies.apache.org/flink/flink-docs-release-1.14/docs/deployment/resource-providers/standalone/docker/#app-cluster-yml
+#  jobmanager:
+#    image: flink:1.13.6-scala_2.12
+#    ports:
+#      - "8081:8081"
+#      - "6124:6124"
+#      - "6123:6123"
+#    command: jobmanager
+#    hostname: "jobmanager"
+#    expose:
+#      - 6123
+#      - 6124
+##    volumes:
+##      - flink-config-volume:/opt/flink/conf
+#    environment:
+#      - |
+#        FLINK_PROPERTIES=
+#        jobmanager.rpc.address: jobmanager
+#        taskmanager.numberOfTaskSlots: 2
+#        blob.server.port: 6124
+#        jobmanager.rpc.port: 6123
+#        taskmanager.rpc.port: 6122
+#        queryable-state.proxy.ports: 6125
+#        jobmanager.memory.process.size: 1600m
+#        taskmanager.memory.process.size: 1728m
+#        parallelism.default: 2
+#
+#  taskmanager:
+#    image: flink:1.13.6-scala_2.12
+#    depends_on:
+#      - jobmanager
+#    command: taskmanager
+#    ports:
+#      - "6122:6122"
+#      - "6125:6125"
+#    expose:
+#      - 6122
+#      - 6125
+#    scale: 1
+#    links:
+#      - jobmanager:jobmanager
+##    volumes:
+##      - flink-tm-config-volume:/opt/flink/conf
+#    environment:
+#      - |
+#        FLINK_PROPERTIES=
+#        jobmanager.rpc.address: jobmanager
+#        taskmanager.numberOfTaskSlots: 2
+#        blob.server.port: 6124
+#        jobmanager.rpc.port: 6123
+#        taskmanager.rpc.port: 6122
+#        queryable-state.proxy.ports: 6125
+#        jobmanager.memory.process.size: 1600m
+#        taskmanager.memory.process.size: 1728m
+#        parallelism.default: 2
+#
+#  beamworkerpool:
+#    image: apache/beam_python3.8_sdk
+#    command:
+#      - --worker_pool
+#    ports:
+#      - "50000:50000"
+#      - "40609:40609"
+#      - "37481:37481"
+#      - "38299:38299"
+#      - "35067:35067"
+#    expose:
+#      - 50000lo
+#
+#
+#volumes:
+#  flink-config-volume:
+#  flink-tm-config-volume:
